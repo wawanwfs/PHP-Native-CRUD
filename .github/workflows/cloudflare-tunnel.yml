@@ -45,7 +45,7 @@ jobs:
       - name: Show public URL
         run: |
           for i in {1..30}; do
-            URL=$(grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n 1 || true)
+            URL=$(grep -Eo 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n 1 || true)
             if [ -n "$URL" ]; then
               echo "Cloudflare URL: $URL"
               exit 0
