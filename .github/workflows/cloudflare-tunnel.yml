@@ -10,6 +10,27 @@ jobs:
   run-preview:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: user
+      DB_PASSWORD: userpassword
+      DB_NAME: crud-php-native
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: crud-php-native
+          MYSQL_USER: user
+          MYSQL_PASSWORD: userpassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uuser -puserpassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -28,6 +49,25 @@ jobs:
             exit 1
           fi
           cp *.php /tmp/webroot/
+
+      - name: Wait for MySQL and initialize schema
+        run: |
+          MAX_RETRIES=30
+          RETRY_SLEEP_SECONDS=2
+
+          for ((i=1; i<=MAX_RETRIES; i++)); do
+            php -r '
+              mysqli_report(MYSQLI_REPORT_OFF);
+              $conn = new mysqli(getenv("DB_HOST"), getenv("DB_USER"), getenv("DB_PASSWORD"), getenv("DB_NAME"), (int)getenv("DB_PORT"));
+              if ($conn->connect_error) { exit(1); }
+              $conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, status TINYINT(1) NOT NULL DEFAULT 1)");
+              exit(0);
+            ' && exit 0
+            sleep "$RETRY_SLEEP_SECONDS"
+          done
+
+          echo "MySQL is not ready."
+          exit 1
 
       - name: Start PHP built-in server
         run: |
