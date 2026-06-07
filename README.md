@@ -4,7 +4,7 @@ Repository ini memiliki workflow GitHub Actions untuk menjalankan aplikasi PHP d
 
 ## File Workflow
 
-- `/tmp/workspace/wawanwfs/PHP-Native-CRUD/.github/workflows/cloudflare-tunnel.yml`
+- `.github/workflows/cloudflare-tunnel.yml`
 
 ## Cara Menjalankan
 
