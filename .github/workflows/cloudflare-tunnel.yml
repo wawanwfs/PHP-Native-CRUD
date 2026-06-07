@@ -1,0 +1,48 @@
+name: Cloudflare Tunnel Preview
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Start PHP built-in server
+        run: php -S 127.0.0.1:8000 -t . > /tmp/php-server.log 2>&1 &
+
+      - name: Install cloudflared
+        run: |
+          curl -L --output cloudflared.deb \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      - name: Start Cloudflare Tunnel
+        run: cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate > /tmp/cloudflared.log 2>&1 &
+
+      - name: Show public URL
+        run: |
+          for i in {1..30}; do
+            URL=$(grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n 1 || true)
+            if [ -n "$URL" ]; then
+              echo "Cloudflare URL: $URL"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Failed to read Cloudflare URL from log."
+          cat /tmp/cloudflared.log
+          exit 1
+
+      - name: Keep tunnel alive for 6 hours
+        run: sleep 21600
