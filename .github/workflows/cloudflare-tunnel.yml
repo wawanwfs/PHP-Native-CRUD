@@ -23,17 +23,24 @@ jobs:
       - name: Prepare web root
         run: |
           mkdir -p /tmp/webroot
+          if ! compgen -G "*.php" > /dev/null; then
+            echo "No PHP files found in repository root."
+            exit 1
+          fi
           cp *.php /tmp/webroot/
 
       - name: Start PHP built-in server
         run: |
+          MAX_RETRIES=10
+          RETRY_SLEEP_SECONDS=1
+
           php -S 127.0.0.1:8000 -t /tmp/webroot > /tmp/php-server.log 2>&1 &
-          for i in {1..10}; do
+          for ((i=1; i<=MAX_RETRIES; i++)); do
             STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000 || true)
             if [ "$STATUS_CODE" = "200" ]; then
               exit 0
             fi
-            sleep 1
+            sleep "$RETRY_SLEEP_SECONDS"
           done
           echo "PHP server failed to start."
           cat /tmp/php-server.log
@@ -50,13 +57,16 @@ jobs:
 
       - name: Show public URL
         run: |
-          for i in {1..30}; do
+          MAX_RETRIES=30
+          RETRY_SLEEP_SECONDS=2
+
+          for ((i=1; i<=MAX_RETRIES; i++)); do
             URL=$(grep -Eo 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' /tmp/cloudflared.log | head -n 1 || true)
             if [ -n "$URL" ]; then
               echo "Cloudflare URL: $URL"
               exit 0
             fi
-            sleep 2
+            sleep "$RETRY_SLEEP_SECONDS"
           done
 
           echo "Failed to read Cloudflare URL from log."
