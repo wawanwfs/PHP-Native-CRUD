@@ -27,7 +27,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uuser -puserpassword"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -55,18 +55,23 @@ jobs:
           MAX_RETRIES=30
           RETRY_SLEEP_SECONDS=2
 
-          for ((i=1; i<=MAX_RETRIES; i++)); do
+          for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
             php -r '
               mysqli_report(MYSQLI_REPORT_OFF);
               $conn = new mysqli(getenv("DB_HOST"), getenv("DB_USER"), getenv("DB_PASSWORD"), getenv("DB_NAME"), (int)getenv("DB_PORT"));
               if ($conn->connect_error) { exit(1); }
-              $conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, status TINYINT(1) NOT NULL DEFAULT 1)");
+              $result = $conn->query("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) NOT NULL UNIQUE, password VARCHAR(255) NOT NULL, status TINYINT(1) NOT NULL DEFAULT 1)");
+              if (!$result) {
+                fwrite(STDERR, "Failed to initialize users table: " . $conn->error . PHP_EOL);
+                exit(1);
+              }
               exit(0);
             ' && exit 0
+            echo "MySQL not ready yet (attempt $attempt/$MAX_RETRIES)..."
             sleep "$RETRY_SLEEP_SECONDS"
           done
 
-          echo "MySQL is not ready."
+          echo "MySQL did not become ready after $MAX_RETRIES attempts."
           exit 1
 
       - name: Start PHP built-in server

@@ -69,5 +69,5 @@ php -S 127.0.0.1:8000
 
 ## Catatan
 
-- Password saat ini disimpan menggunakan `md5` sesuai implementasi existing.
+- ⚠️ Password saat ini masih menggunakan `md5` yang sudah tidak aman (cryptographically broken) dan tidak direkomendasikan, termasuk untuk development. Segera migrasikan ke `password_hash()` dan `password_verify()`.
 - Workflow GitHub Actions (`.github/workflows/cloudflare-tunnel.yml`) digunakan untuk preview publik sementara via Cloudflare Tunnel.
